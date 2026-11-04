@@ -1,24 +1,28 @@
 name: CI
+
+# swift-ci plans and runs the checks from .ci/action.json (https://github.com/g-cqd/swift-ci); .ci/README.md lists
+# what runs when. `.ci/swift-ci local` runs the same checks on a developer's machine.
 on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
+
 permissions:
   contents: read
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+
 jobs:
-  quality:
-    uses: Aemi-Studio/aemi/.github/workflows/swift-quality.yml@afc1be3d578045b381e76f6b1712a81b39956ced # aemi afc1be3
-    with:
-      dev-env-var: ABYSM_DEV
-      enable-linux: false
-      enable-sanitizers: true
-      sanitizers: address
+  ci:
+    name: Checks
+    uses: g-cqd/swift-ci/.github/workflows/swift-ci.yml@4843bd85121c134890fa0ca8c9c2af246008e814 # swift-ci 4843bd8
+    permissions:
+      contents: write # reusable publish permission; this package publishes no archives
+
   ios:
-    name: iOS (${{ matrix.runtime }})
+    name: Tests · iOS Simulator · ${{ matrix.runtime }}
     runs-on: macos-26
     timeout-minutes: 45
     strategy:
@@ -26,19 +30,20 @@ jobs:
       matrix:
         runtime: ['18.6', latest]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install floor runtime
+      - name: Setup · Check Out Sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup · Install iOS ${{ matrix.runtime }} Runtime
         if: matrix.runtime == '18.6'
         run: xcodebuild -downloadPlatform iOS -buildVersion 18.6
-      - name: Select a simulator
+      - name: Setup · Create Simulator
         env:
           REQUESTED_RUNTIME: ${{ matrix.runtime }}
         run: python3 .github/scripts/select-simulator.py
-      - name: Install Swift
+      - name: Setup · Install Swift 6.4.1
         uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9 # v3.0.0-beta.1
         with:
           swift-version: '6.4.1'
-      - name: Find the installed Swift toolchain
+      - name: Setup · Identify Swift Toolchain
         run: |
           python3 - <<'PY'
           import json, os, pathlib, plistlib, subprocess
@@ -50,17 +55,18 @@ jobs:
               env.write(f"SWIFT_TOOLCHAIN_ID={identifier}\n")
           print(identifier)
           PY
-      - name: Test iOS with the pinned Swift toolchain
+      - name: Tests · Run on iOS Simulator
         run: |
           # Swift.org toolchains do not bundle Apple's linker; make the selected Xcode's tools discoverable.
-          export DEVELOPER_DIR="$(xcode-select -p)"
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
           xcode_tools="$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin"
           export PATH="$xcode_tools:$PATH"
           xcodebuild -skipMacroValidation -skipPackagePluginValidation \
             -scheme Abysm -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath "$RUNNER_TEMP/Abysm" -resultBundlePath "$RUNNER_TEMP/Abysm-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO test
-      - name: Remove temporary simulator
+      - name: Cleanup · Delete Simulator
         if: always()
         run: |
           if [ -n "${SIMULATOR_ID:-}" ]; then
