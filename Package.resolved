@@ -1,12 +1,21 @@
 {
-  "originHash" : "251538ee94342326611c277a80332a658f4e11a50dcc1ef46a638d6cc4f73592",
+  "originHash" : "3595ae3c55d5acffbe50b905cd4c9b448a1e944257451e3a9a8e936d236c428c",
   "pins" : [
     {
       "identity" : "aemi",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Aemi-Studio/aemi.git",
       "state" : {
-        "revision" : "a2cd87ada2654070fd5730fa601eb24b2271e2e5"
+        "revision" : "528804643f693104656a02449cfa59131556f616"
+      }
+    },
+    {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "917b472dbe53ba699cbb0495f9a95a084bc6364d",
+        "version" : "1.7.4"
       }
     },
     {
@@ -16,6 +25,15 @@
       "state" : {
         "revision" : "844289ac455816e193f1dbbe014f3c4dbe429410",
         "version" : "1.7.4"
+      }
+    },
+    {
+      "identity" : "swift-crypto",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-crypto.git",
+      "state" : {
+        "revision" : "f8fad2f95ad67b45f6340c0960e2396094d67e07",
+        "version" : "5.1.1"
       }
     },
     {
