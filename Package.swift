@@ -23,7 +23,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/Aemi-Studio/aemi.git",
-            revision: "340c49040faa49313d5632003d8224d9d0084fb0"
+            revision: "32f1d61e0ee2fe19af99c1c1a040f1fbdae91d4a"
         )
     ],
     targets: [
