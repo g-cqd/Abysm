@@ -109,6 +109,7 @@ public struct RuntimeMethod<each Argument: ObjCValue, Result: ObjCValue>: @unche
     let selector: Selector
     let isClassMethod: Bool
     let classObject: AnyObject
+    let expectedSignature: String
 
     init(class runtimeClass: RuntimeClass, selector: String, isClassMethod: Bool) {
         className = runtimeClass.name
@@ -116,17 +117,18 @@ public struct RuntimeMethod<each Argument: ObjCValue, Result: ObjCValue>: @unche
         self.selector = NSSelectorFromString(selector)
         self.isClassMethod = isClassMethod
         classObject = runtimeClass.object
+        var encodings: [String] = []
+        repeat encodings.append((each Argument).objcEncoding)
+        expectedSignature = Invocation.signature(result: Result.objcEncoding, arguments: encodings)
     }
 
     /// Calls an instance method on `target`.
     public func callAsFunction(on target: AnyObject, _ arguments: repeat each Argument) throws(RuntimeError)
         -> Result
     {
-        var encodings: [String] = []
-        repeat encodings.append((each Argument).objcEncoding)
         try verifyReceiver(
             target, selector: selectorName, classMethod: isClassMethod,
-            expected: Invocation.signature(result: Result.objcEncoding, arguments: encodings))
+            expected: expectedSignature)
         var buffer = ArgumentBuffer()
         repeat (each arguments).encode(into: &buffer)
         var result: Result?
@@ -153,6 +155,7 @@ public struct RuntimeAction<each Argument: ObjCValue>: @unchecked Sendable {
     let selector: Selector
     let isClassMethod: Bool
     let classObject: AnyObject
+    let expectedSignature: String
 
     init(class runtimeClass: RuntimeClass, selector: String, isClassMethod: Bool) {
         className = runtimeClass.name
@@ -160,14 +163,15 @@ public struct RuntimeAction<each Argument: ObjCValue>: @unchecked Sendable {
         self.selector = NSSelectorFromString(selector)
         self.isClassMethod = isClassMethod
         classObject = runtimeClass.object
+        var encodings: [String] = []
+        repeat encodings.append((each Argument).objcEncoding)
+        expectedSignature = Invocation.signature(result: "v", arguments: encodings)
     }
 
     public func callAsFunction(on target: AnyObject, _ arguments: repeat each Argument) throws(RuntimeError) {
-        var encodings: [String] = []
-        repeat encodings.append((each Argument).objcEncoding)
         try verifyReceiver(
             target, selector: selectorName, classMethod: isClassMethod,
-            expected: Invocation.signature(result: "v", arguments: encodings))
+            expected: expectedSignature)
         var buffer = ArgumentBuffer()
         repeat (each arguments).encode(into: &buffer)
         try unsafe Invocation.send(to: target, selector: selector, arguments: buffer, resultEncoding: nil) { _ in }

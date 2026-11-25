@@ -36,9 +36,13 @@ public struct RuntimeObject {
             try Invocation.verify(
                 class: type(of: base), selector: name, classMethod: false,
                 expected: Invocation.signature(result: Value.objcEncoding, arguments: []))
+            let sel = NSSelectorFromString(name)
+            if let fast: Value = try Invocation.sendScalarGetter(to: base, selector: sel, name: name, as: Value.self) {
+                return fast
+            }
             var result: Value?
             try unsafe Invocation.send(
-                to: base, selector: NSSelectorFromString(name), arguments: ArgumentBuffer(),
+                to: base, selector: sel, arguments: ArgumentBuffer(),
                 resultEncoding: Value.objcEncoding
             ) { (pointer) throws(RuntimeError) in result = try unsafe Value.decode(from: pointer) }
             guard let result else { throw .sizeMismatch(selector: name) }
@@ -53,12 +57,30 @@ public struct RuntimeObject {
             try Invocation.verify(
                 class: type(of: base), selector: setter, classMethod: false,
                 expected: Invocation.signature(result: "v", arguments: [Value.objcEncoding]))
+            let sel = NSSelectorFromString(setter)
+            if try Invocation.sendScalarSetter(to: base, selector: sel, name: setter, value: value) {
+                return
+            }
             var buffer = ArgumentBuffer()
             value.encode(into: &buffer)
             try unsafe Invocation.send(
-                to: base, selector: NSSelectorFromString(setter), arguments: buffer, resultEncoding: nil
+                to: base, selector: sel, arguments: buffer, resultEncoding: nil
             ) { _ in }
         }
+    }
+
+    /// Writes a property when the object implements the verified setter; returns `true` if applied
+    /// or `false` if the selector is absent or signature-mismatched (recorded once in `RuntimeAccess`).
+    /// Never crashes or silently corrupts types like unchecked KVC.
+    @discardableResult
+    public func writeIfSupported<Value: ObjCValue>(_ value: Value, to name: String) -> Bool {
+        (try? write(value, to: name)) != nil
+    }
+
+    /// Checks whether the underlying instance responds to `selector` (and `RuntimeAccess.isEnabled`).
+    public func responds(to selector: String) -> Bool {
+        guard RuntimeAccess.isEnabled else { return false }
+        return Invocation.hasSelector(class: type(of: base), selector: selector, classMethod: false)
     }
 
     // MARK: - Methods

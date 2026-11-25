@@ -103,3 +103,125 @@ NSString *abysm_set_value_for_key(id target, id value, NSString *key) {
         return exception.name;
     }
 }
+
+// MARK: - Direct IMP fast paths
+// Each caller has already verified the Objective-C type encoding for `(object_getClass(target), selector)`.
+// Looking up `class_getMethodImplementation` and dispatching directly skips `NSMethodSignature` and
+// `NSInvocation` heap allocations while preserving full `@try/@catch` exception containment.
+
+AbysmStatus abysm_call_v(id target, SEL selector, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        ((void (*)(id, SEL))imp)(target, selector);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_v_b(id target, SEL selector, BOOL arg0, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        ((void (*)(id, SEL, BOOL))imp)(target, selector, arg0);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_v_d(id target, SEL selector, double arg0, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        ((void (*)(id, SEL, double))imp)(target, selector, arg0);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_v_q(id target, SEL selector, long long arg0, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        ((void (*)(id, SEL, long long))imp)(target, selector, arg0);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_b(id target, SEL selector, BOOL *result, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        *result = ((BOOL (*)(id, SEL))imp)(target, selector);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_d(id target, SEL selector, double *result, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        *result = ((double (*)(id, SEL))imp)(target, selector);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_q(id target, SEL selector, long long *result, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        *result = ((long long (*)(id, SEL))imp)(target, selector);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_I(id target, SEL selector, unsigned int *result, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        *result = ((unsigned int (*)(id, SEL))imp)(target, selector);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}
+
+AbysmStatus abysm_call_b_o(id target, SEL selector, id arg0, BOOL *result, NSString **exceptionName) {
+    Class cls = object_getClass(target);
+    IMP imp = class_getMethodImplementation(cls, selector);
+    if (imp == NULL) return AbysmStatusNoSignature;
+    @try {
+        *result = ((BOOL (*)(id, SEL, id))imp)(target, selector, arg0);
+        return AbysmStatusOK;
+    } @catch (NSException *exception) {
+        if (exceptionName != NULL) *exceptionName = exception.name;
+        return AbysmStatusRaised;
+    }
+}

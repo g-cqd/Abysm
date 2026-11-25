@@ -77,6 +77,102 @@ enum Invocation {
         }
     }
 
+    // MARK: - Fast IMP dispatch helpers
+
+    /// Dispatches a verified 0-arg scalar/void/object getter or 1-arg scalar setter through direct
+    /// IMP invocation when the signature matches a known fast shape, falling back to `NSInvocation`
+    /// for everything else. Eliminates heap allocations for `ArgumentBuffer`, `NSInvocation`, and
+    /// `NSMethodSignature` on hot paths while keeping `@try/@catch` containment identical.
+    static func sendScalarGetter<Value: ObjCValue>(
+        to target: AnyObject,
+        selector: Selector,
+        name: String,
+        as _: Value.Type
+    ) throws(RuntimeError) -> Value? {
+        try RuntimeAccess.checkEnabled()
+        var exception: NSString?
+        switch Value.objcEncoding {
+            case "B":
+                var out = ObjCBool(false)
+                let status = unsafe abysm_call_b(target, selector, &out, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return out.boolValue as? Value
+            case "d":
+                var out: Double = 0
+                let status = unsafe abysm_call_d(target, selector, &out, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                if Value.self == Double.self { return out as? Value }
+                if Value.self == CGFloat.self { return CGFloat(out) as? Value }
+                return nil
+            case "q":
+                var out: Int64 = 0
+                let status = unsafe abysm_call_q(target, selector, &out, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return (Int(out) as? Value)
+            case "I":
+                var out: UInt32 = 0
+                let status = unsafe abysm_call_I(target, selector, &out, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return (out as? Value)
+            default:
+                return nil
+        }
+    }
+
+    static func sendScalarSetter<Value: ObjCValue>(
+        to target: AnyObject,
+        selector: Selector,
+        name: String,
+        value: Value
+    ) throws(RuntimeError) -> Bool {
+        try RuntimeAccess.checkEnabled()
+        var exception: NSString?
+        switch Value.objcEncoding {
+            case "B":
+                guard let b = value as? Bool else { return false }
+                let status = unsafe abysm_call_v_b(target, selector, b, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return true
+            case "d":
+                let d: Double
+                if let raw = value as? Double {
+                    d = raw
+                } else if let raw = value as? CGFloat {
+                    d = Double(raw)
+                } else {
+                    return false
+                }
+                let status = unsafe abysm_call_v_d(target, selector, d, &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return true
+            case "q":
+                guard let i = value as? Int else { return false }
+                let status = unsafe abysm_call_v_q(target, selector, Int64(i), &exception)
+                try checkFastStatus(status, target: target, selector: name, exception: exception)
+                return true
+            default:
+                return false
+        }
+    }
+
+    private static func checkFastStatus(
+        _ status: AbysmStatus,
+        target: AnyObject,
+        selector: String,
+        exception: NSString?
+    ) throws(RuntimeError) {
+        switch status {
+            case .OK:
+                return
+            case .noSignature:
+                throw .selectorNotFound(class: String(describing: type(of: target)), selector: selector)
+            case .raised:
+                throw .raised(selector: selector, exception: (exception as String?) ?? "unknown")
+            default:
+                throw .sizeMismatch(selector: selector)
+        }
+    }
+
     /// The expected signature for a declaration: result, receiver, selector, then each argument.
     static func signature(result: String, arguments: [String]) -> String {
         result + "@:" + arguments.joined()
@@ -93,6 +189,12 @@ enum Invocation {
     /// once per (class, selector, declaration) and every later access costs a dictionary lookup instead of building
     /// an \`NSMethodSignature\`. Failures are cached too, so a symbol that is gone is not re-derived every frame.
     private static let verdicts = Mutex<[VerificationKey: RuntimeError?]>([:])
+
+    /// Checks whether `cls` implements `selector`.
+    static func hasSelector(class cls: AnyClass, selector: String, classMethod: Bool) -> Bool {
+        let sel = NSSelectorFromString(selector)
+        return abysm_signature(cls, sel, classMethod) != nil
+    }
 
     /// Checks the runtime's signature for a selector against the declaration.
     static func verify(

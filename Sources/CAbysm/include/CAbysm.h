@@ -45,6 +45,36 @@ id _Nullable abysm_value_for_key(id target, NSString *key, NSString *_Nullable *
 /// `-setValue:forKey:` with an exception caught. Returns the exception name, or nil on success.
 NSString *_Nullable abysm_set_value_for_key(id target, id _Nullable value, NSString *key);
 
+// MARK: - Direct IMP fast paths (zero NSInvocation allocation, still @try/@catch protected)
+
+/// Invokes a verified 0-arg void selector directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_v(id target, SEL selector, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 1-arg Bool setter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_v_b(id target, SEL selector, BOOL arg0, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 1-arg Double setter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_v_d(id target, SEL selector, double arg0, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 1-arg Int64 setter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_v_q(id target, SEL selector, long long arg0, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 0-arg Bool getter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_b(id target, SEL selector, BOOL *result, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 0-arg Double getter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_d(id target, SEL selector, double *result, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 0-arg Int64 getter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_q(id target, SEL selector, long long *result, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 0-arg UInt32 getter directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_I(id target, SEL selector, unsigned int *result, NSString *_Nullable *_Nullable exceptionName);
+
+/// Invokes a verified 1-arg object selector returning Bool directly through its IMP while catching NSExceptions.
+AbysmStatus abysm_call_b_o(id target, SEL selector, id _Nullable arg0, BOOL *result,
+                           NSString *_Nullable *_Nullable exceptionName);
+
 NS_ASSUME_NONNULL_END
 
 #endif
